@@ -1,0 +1,61 @@
+[editor]
+line_wrapping=false
+line_break_column=72
+auto_continue_multiline=true
+
+[file_prefs]
+final_new_line=true
+ensure_convert_new_lines=true
+strip_trailing_spaces=false
+replace_tabs=true
+
+[indentation]
+indent_width=4
+indent_type=0
+indent_hard_tab_width=8
+detect_indent=false
+detect_indent_width=false
+indent_mode=3
+
+[project]
+name=GridWarsIdle
+base_path=/mnt/012e4f02-ed06-498e-9d13-148828112f81/Personal Code Projects/GridWarsIdle
+description=
+file_patterns=
+
+[long line marker]
+long_line_behaviour=1
+long_line_column=72
+
+[files]
+current_page=2
+FILE_NAME_0=80;Make;0;EUTF-8;1;1;0;%2Fmnt%2F012e4f02-ed06-498e-9d13-148828112f81%2FPersonal%20Code%20Projects%2FGridWarsIdle%2Fmakefile;0;4
+FILE_NAME_1=1021;C++;0;EUTF-8;0;1;0;%2Fmnt%2F012e4f02-ed06-498e-9d13-148828112f81%2FPersonal%20Code%20Projects%2FGridWarsIdle%2FGridIdleGame.cpp;0;4
+FILE_NAME_2=2900;C++;0;EUTF-8;0;1;0;%2Fmnt%2F012e4f02-ed06-498e-9d13-148828112f81%2FPersonal%20Code%20Projects%2FGridWarsIdle%2Fidlestrategy.cpp;0;4
+FILE_NAME_3=1778;C++;0;EUTF-8;0;1;0;%2Fmnt%2F012e4f02-ed06-498e-9d13-148828112f81%2FPersonal%20Code%20Projects%2FGridWarsIdle%2Fidlestrategy.h;0;4
+FILE_NAME_4=2193;C++;0;EUTF-8;0;1;0;%2Fhome%2Felganif%2FOLC_Projects%2FRTSIdleWar_git%2Fmain%2FRTSIG%2FOpenSimplexNoise.hh;0;4
+FILE_NAME_5=27381;C++;0;EUTF-8;0;1;0;%2Fmnt%2F012e4f02-ed06-498e-9d13-148828112f81%2FPersonal%20Code%20Projects%2FGridWarsIdle%2FolcPixelGameEngine.h;0;4
+FILE_NAME_6=5138;C++;0;EUTF-8;0;1;0;%2Fmnt%2F012e4f02-ed06-498e-9d13-148828112f81%2FPersonal%20Code%20Projects%2FGridWarsIdle%2FolcPGEX_TransformedView.h;0;4
+FILE_NAME_7=132;C++;0;EUTF-8;0;1;0;%2Fmnt%2F012e4f02-ed06-498e-9d13-148828112f81%2FPersonal%20Code%20Projects%2FGridWarsIdle%2FolcPixelGameEngine.cpp;0;4
+FILE_NAME_8=17368;C++;0;EUTF-8;0;1;0;%2Fusr%2Finclude%2Fc%2B%2B%2F13%2Fbits%2Fstl_map.h;0;4
+
+[VTE]
+last_dir=/home/elganif
+
+[build-menu]
+NF_00_LB=_Make
+NF_00_CM=make
+NF_00_WD=
+C++FT_00_LB=_Compile
+C++FT_00_CM=g++  -c "%f" -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++17
+C++FT_00_WD=
+C++FT_01_LB=_Build
+C++FT_01_CM=g++  -o "%e" "%f" -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++17
+C++FT_01_WD=
+filetypes=C++;Make;
+MakeFT_00_LB=_Compile
+MakeFT_00_CM=g++ -Wall -c "%f" -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++17
+MakeFT_00_WD=
+MakeFT_01_LB=_Build
+MakeFT_01_CM=g++ -Wall -o "%e" "%f" -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++17
+MakeFT_01_WD=
