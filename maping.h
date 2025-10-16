@@ -12,6 +12,23 @@ struct HASH_OLC_VI2D {
 // used to iterate through neighboring cells starting with north and clockwise
 const olc::vi2d compass[8] = {{-1,0},{-1,1},{0,1},{1,1},{1,0},{1,-1},{0,-1},{-1,-1}};
 
+class MapInterface : public shared_ptr_from_this{
+public:
+    MapInterface() = 0;
+    ~MapInterface(){
+        // code to remove iterator from map list
+    };
+    virtual void AddToMap(olc::vi2d location) = 0;
+private:
+olc::vi2d _location;
+// iterator to map list
+}
+
+void MapInterface::AddToMap{olc::vi2d location){
+    _location = location;
+  // code to add to maps at location
+}
+
 class Map{
     private:
     struct factionList{int faction;std::list<std::shared_ptr<Entity>> units;};
