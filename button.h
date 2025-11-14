@@ -3,7 +3,7 @@
 class Faction;
 
 class Button{
-    public:
+public:
     Button();
     Button(std::function<void()> function);
     ~Button();
@@ -20,7 +20,7 @@ class Button{
     
     bool isInButton(olc::vf2d location);
     
-    private:
+private:
     std::function<void()> _executable;
     std::string _text;
     olc::vi2d _tl;
@@ -28,40 +28,45 @@ class Button{
 };
 
 /// Controller Class. 
-class Controller{
-    public:
+class Controller {
+public:
     Controller():_faction(nullptr){};
     Controller(std::shared_ptr<Faction> faction);
     virtual ~Controller();
     
-    virtual void setup() = 0;
-    virtual void update(int tickCounter) = 0;
+    virtual void initialize() = 0;
+    virtual void update() = 0;
     
     
-    protected:
+protected:
     std::shared_ptr<Faction> _faction;
 };
 
 class Player : public Controller {
-    public:
+public:
     Player() = default;
     
     Player(std::shared_ptr<Faction> faction,olc::vi2d tlControl, olc::vi2d brControl, olc::PixelGameEngine* game);
+    void initialize() override;
+    void setup();
+    void update() override;
     void draw();
-    void setup() override;
-    void update(int tickCounter) override;
-    private:
+private:
     olc::PixelGameEngine *_game;
     olc::vi2d _tl;
     olc::vi2d _br;
+    int _activeMenu = -1;
+    bool _menuReady = false;
     std::vector<Button> _buttons;
+    olc::Renderable _uiImage;
 };
 
 class Computer : public Controller {
-    public:
+public:
     Computer() = default;
-    void setup() override;
-    void update(int tickCounter) override;
+    Computer(std::shared_ptr<Faction> faction);
+    void initialize() override;
+    void update() override;
     
 };
 #endif

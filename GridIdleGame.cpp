@@ -7,9 +7,10 @@
 #include <vector>
 #include <set>
 
+#include "engine.h"
 #include "factions.h"
-#include "entity.h"
 #include "maping.h"
+#include "entity.h"
 #include "button.h"
 
 
@@ -26,68 +27,22 @@ public:
 private:
     
     const int turnsPerSecond = 30;
-    int turnCount = 0;
     olc::TransformedView tv;
     
-    struct turnPriorityCompare {
-        public:
-            bool operator()(std::weak_ptr<Entity> a, std::weak_ptr<Entity> b) {
-                std::shared_ptr<Entity> a_ptr;
-                std::shared_ptr<Entity> b_ptr;
-                if(a_ptr = a.lock()){
-                    if(b_ptr = b.lock()){
-                        return (a_ptr->nextTurn > b_ptr->nextTurn);
-                    }
-                    return true;
-                }
-                return false;
-            }
-    };
-    std::priority_queue<std::weak_ptr<Entity>,std::vector<std::weak_ptr<Entity>>,turnPriorityCompare> turnOrder;
-    std::vector<std::shared_ptr<Faction>> factions;
-     //playerFaction;
-    //std::shared_ptr<Faction> npcFaction;
     
-    Player playerControls;
-    Computer aiControls;
+    std::vector<std::shared_ptr<Faction>> factions;
+    
+    std::shared_ptr<Player> playerControls;
 
-
-    // Physics operations and ingame time
+    /// Physics operations and ingame time
     void tick(){
+        TurnQueue::queue.runTurn();
         
-        // update any units whos turn has come up
-        std::vector<std::shared_ptr<Entity>> unitsToTakeTurn;
-        while(!turnOrder.empty()){
-            if(std::shared_ptr<Entity> queueTop = turnOrder.top().lock()){
-                if(queueTop->nextTurn > turnCount)
-                    break; // out of while loop, next unit in queue is waiting for a future turn
-                
-                unitsToTakeTurn.push_back(queueTop);
-            }
-            turnOrder.pop(); //lock failed or turn was taken
-        }
-        
-        for(auto &ptr : unitsToTakeTurn){
-            int wait = ptr->update(); // units whos turn was ready get to take thier turn
-            // any units that are still alive requeue
-            if(ptr->alive() && wait > 0){ // a zero or negitive wait time indicates not to requeue unit
-                ptr->nextTurn = turnCount + wait;
-                turnOrder.push(ptr);
-            }
-        }
-        // add all new units to the turnTracker
-        while(Entity::bootCamp->begin() != Entity::bootCamp->end()){
-            std::shared_ptr<Entity> tmp = Entity::bootCamp->front();
-            tmp->nextTurn = turnCount + 1; // set its first move to next turn
-            turnOrder.push(tmp);
-            Entity::bootCamp->pop_front();
-            
-        }
-        // regenerate pathfinding map each turn
-        Entity::mapData->generateVectorMap();
+        Map::mapData->generateVectorMap();
     }
     
     
+    /// UI Implementation
     enum UI{
         MAP,
         CONTROL,
@@ -130,12 +85,12 @@ private:
         // Map Controls
         if (mouseLoc == MAP){
             tv.HandlePanAndZoom();
-            mapMouse = tv.ScreenToWorld(GetMousePos());
+            mapMouse = tv.ScreenToWorld(GetMousePos() );
             olc::vf2d tvViewerBR = tv.ScreenToWorld(brMapView);
             //clamp view to the gameworld
             // 0,0 in top left, to 170,84 in bottom right.
             olc::vf2d tlClamp = olc::vf2d(-0.5f,-0.5f);
-            olc::vf2d brClamp = (Entity::mapData->br + olc::vf2d(0.5f,1.0f)) -(tv.ScreenToWorld(brMapView) - tv.GetWorldOffset()) ;
+            olc::vf2d brClamp = (Map::mapData->br + olc::vf2d(0.5f,1.0f) ) -(tv.ScreenToWorld(brMapView) - tv.GetWorldOffset() ) ;
             olc::vf2d tvOffset = tv.GetWorldOffset().clamp(tlClamp,brClamp); //TODO :calculate zoom to backset ratio
             tv.SetWorldOffset(tvOffset);
             if(GetMouse(1).bReleased)
@@ -146,41 +101,39 @@ private:
             }
             
         }
-        playerControls.update(turnCount);
+        playerControls->update();
         
     }
     
     void draw(){
         
         // Game area terrain background
-        tv.DrawDecal({0,0},Entity::mapData->terrainD,{10.0f/Entity::mapData->graphicalDetail,10.0f/Entity::mapData->graphicalDetail});
+        tv.DrawDecal({0,0},Map::mapData->terrain.Decal(),{10.0f/Map::mapData->graphicalDetail,10.0f/Map::mapData->graphicalDetail});
         
         //draw all units from the mapData
-        for(auto const &[local,cell] : Entity::mapData->unitLocations){
-            tv.FillRectDecal(local+olc::vf2d(0.1f,0.1f),olc::vf2d(0.8,0.8),Entity::mapData->factionColours[cell.faction]);
+        for(auto const &[local,cell] : Map::mapData->unitLocations){
+            tv.FillRectDecal(local+olc::vf2d(0.1f,0.1f),olc::vf2d(0.8,0.8),Map::mapData->factionColours[cell.faction]);
         }
         
-        for(auto const &[local,amount] : Entity::mapData->resourceNodes){
+        for(auto const &[local,amount] : Map::mapData->resourceNodes){
             tv.DrawStringDecal(local,"R",olc::MAGENTA);
         }
         
         //draw vertical and horizontal lines for the grid overlay
-        for(int y = 0;y <= Entity::mapData->br.y;y++){
-            tv.DrawLineDecal(olc::vi2d(0,y),olc::vi2d(Entity::mapData->br.x,y),olc::VERY_DARK_GREY);
+        for(int y = 0;y <= Map::mapData->br.y;y++){
+            tv.DrawLineDecal(olc::vi2d(0,y),olc::vi2d(Map::mapData->br.x,y),olc::VERY_DARK_GREY);
         }
-        for(int x = 0;x <= Entity::mapData->br.x;x++){
-            tv.DrawLineDecal(olc::vi2d(x,0),olc::vi2d(x,Entity::mapData->br.y),olc::VERY_DARK_GREY);
+        for(int x = 0;x <= Map::mapData->br.x;x++){
+            tv.DrawLineDecal(olc::vi2d(x,0),olc::vi2d(x,Map::mapData->br.y),olc::VERY_DARK_GREY);
         }
         
         // draw faction bases
-        for( auto [faction,location] : Entity::mapData->baseLocations){
-            tv.DrawRectDecal(location + olc::vi2d(-1,-1),olc::vi2d(3,3),Entity::mapData->factionColours[faction]);
+        for(auto faction : factions){
+            tv.DrawDecal( (faction->location() - olc::vf2d(1,1) ),
+                        faction->drawing(),
+                        olc::vf2d(Map::mapData->graphicalDetail,Map::mapData->graphicalDetail) );
+            tv.DrawRectDecal( (faction->location() - olc::vf2d(1,1) ),olc::vi2d(3,3),faction->colour() );
         }
-        
-        
-       // some test buttons
-       playerControls.draw();
-
         
         
         //Draw info panel and info inputs
@@ -193,12 +146,28 @@ private:
         if(focused)
             dataCell = mapFocus;
         
-        if( (focused || mouseLoc == MAP) && Entity::mapData->unitLocations.find(dataCell) != Entity::mapData->unitLocations.end()){
-            DrawStringDecal( line += olc::vi2d(0,10) ,"Units",olc::WHITE);
-            for(auto unit : Entity::mapData->unitLocations[dataCell].units){
-                    DrawStringDecal(line += olc::vi2d(0,10)
-                      , unit->getName() + " " + std::to_string(unit->getHP()) + " " + std::to_string(unit->checkStat(actionEffect))
-                      , unit->factionColour());
+        if( (focused || mouseLoc == MAP) ){
+            for(auto faction : factions){
+                if(dataCell == faction->location() ){ //<- can be adapted to check specific square with faction?
+                    DrawStringDecal(line += olc::vi2d(0,10),"Faction",faction->colour() );
+                    DrawStringDecal(line += olc::vi2d(0,10),std::to_string(faction->resource() ),faction->colour() );
+                }
+            }
+            if(Map::mapData->unitLocations.find(dataCell) != Map::mapData->unitLocations.end() ){
+                DrawStringDecal( line += olc::vi2d(0,10) ,"Units",olc::WHITE);
+                for(auto wptr : Map::mapData->unitLocations[dataCell].units){
+                    if( std::shared_ptr<in_map> mUnit = wptr.lock() ){
+                        std::shared_ptr<Entity> unit = std::dynamic_pointer_cast<Entity>(mUnit);
+                            DrawStringDecal(line += olc::vi2d(0,10)
+                              , unit->getName() + " " + std::to_string(unit->getHP() ) + " " + std::to_string(unit->checkStat(actionEffect) )
+                              , unit->factionColour() );
+                    }
+                }
+            }
+            if(Map::mapData->resourceNodes.find(dataCell) != Map::mapData->resourceNodes.end() ){
+                DrawStringDecal(line += olc::vi2d(0,10)
+                          , "Resources " + std::to_string(Map::mapData->resourceNodes[dataCell]._turnReserve) + " "
+                          , olc::WHITE );
             }
         }
         
@@ -206,42 +175,32 @@ private:
         if(focused)
             tv.DrawRectDecal(mapFocus,{1,1},olc::DARK_YELLOW);
         
+        
+        // some test buttons
+        playerControls->draw();
+        
         /// debug test display
-        //olc::vi2d debugText = olc::vi2d(10,10);
-        //olc::vi2d debugIncrement = olc::vi2d (0,10);
-        //DrawStringDecal(debugText += debugIncrement,tv.GetWorldOffset().str(),olc::CYAN);
-        //DrawStringDecal(debugText += debugIncrement,tv.GetWorldVisibleArea().str(),olc::CYAN);
-        //DrawStringDecal(debugText += debugIncrement,tv.GetWorldScale().str(),olc::CYAN);tv.ScreenToWorld(brMapView);
-        //DrawStringDecal(debugText += debugIncrement,tv.ScreenToWorld(brMapView).str(),olc::CYAN);
-        //olc::vf2d test = Entity::mapData->br -(tv.ScreenToWorld(brMapView) - tv.GetWorldOffset()) ;
-        //DrawStringDecal(debugText += debugIncrement,test.str(),olc::CYAN);
         
         return;
     }
+    
 public:
     bool OnUserCreate() override
     {
         // Called once at the start, so create things here
-        
-        Entity::setMap(170,85);
-        Entity::mapData->generateResources(10);
-        Entity::bootCamp = std::make_shared<std::list<std::shared_ptr<Entity>>>();
-        tv.Initialise(GetScreenSize(),olc::vi2d(10,10));
-        tv.SetScaleExtents(olc::vi2d(10,10),olc::vi2d(100,100));
+        SetPixelMode(olc::Pixel::MASK);
+        Map::createMap(170,85);
+        Map::mapData->generateResources(10);
+        tv.Initialise(GetScreenSize(),olc::vi2d(10,10) );
+        tv.SetScaleExtents(olc::vi2d(10,10),olc::vi2d(100,100) );
         tv.EnableScaleClamp(true);
         
-        factions.emplace_back(std::make_shared<Faction>(Entity::mapData->br - olc::vi2d(20,20),olc::GREEN));
-        playerControls = Player(factions[0], tlControl,brControl ,this);
-        std::shared_ptr<Entity> home = factions[0]->makeBase(CommandCenter,Marine);
-        home->nextTurn = turnCount + 1;
-        turnOrder.push(home);
-        playerControls.setup();
+        factions.emplace_back(std::make_shared<Faction>(Map::mapData->br - olc::vi2d(20,20),olc::GREEN) );
+        playerControls = factions[0]->setAsPlayer(tlControl,brControl,this);
+        playerControls->initialize();
         
-        factions.emplace_back( std::make_shared<Faction>(olc::vi2d(20,20),olc::RED));
-        std::shared_ptr<Entity> enemy = factions[1]->makeBase(CommandCenter,Marine);
-        enemy->nextTurn = turnCount + 1;
-        turnOrder.push(enemy);
-        
+        factions.emplace_back( std::make_shared<Faction>(olc::vi2d(20,20),olc::RED) );
+        factions[1]->setAsComputer();
         
         return true;
     }
@@ -261,7 +220,6 @@ public:
         {
             tick();
             curTime -= 1.0;
-            turnCount++;
         }
         // TODO:: build UI and input function
         userInput();
@@ -278,12 +236,6 @@ public:
         for(int i = 0; i < factions.size();i++)
             factions[i].reset();
         
-        // reset shared_ptr of any units still in the bootCamp list
-        for(auto &ptr : (*Entity::bootCamp)){
-            ptr.reset();
-        }
-        Entity::bootCamp->clear();
-        
         return true;
     }
 };
@@ -292,7 +244,7 @@ public:
 int main()
 {
     IdleGame game;
-    if (game.Construct(game.resolutionX, game.resolutionY, 1, 1))
+    if (game.Construct(game.resolutionX, game.resolutionY, 1, 1) )
         game.Start();
     return 0;
 }

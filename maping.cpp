@@ -8,8 +8,9 @@
 #include <cmath>
 
 #include "factions.h"
-#include "entity.h"
 #include "maping.h"
+#include "engine.h"
+#include "entity.h"
 
 /// comparitor for priority queues to sort closest to furthest 
 class distancePriorityCompare {
@@ -21,6 +22,13 @@ class distancePriorityCompare {
             return std::get<0>(a) > std::get<0>(b);
         }
 };
+
+std::unique_ptr<Map> Map::mapData;
+
+void Map::createMap(int x, int y){
+    mapData = std::make_unique<Map>(170,85);
+    mapData->generateVectorMap();
+}
 
 Map::Map(int width, int height) : br({width,height}) {
 
@@ -36,7 +44,7 @@ Map::Map(int width, int height) : br({width,height}) {
     }
     
     //lambda to calculate perlin noise and scale to between 0 and 1 (default function gives -1 to 1)
-    auto perlVal = [perlin](float x,float y){float p = perlin.eval(float(x),float(y)); return 1 - (p * p);};
+    std::function<float(float,float)> perlVal = [perlin](float x,float y){float p = perlin.eval(float(x),float(y) ); return 1 - (p * p);};
     float perlScale = 0.1f;
     for(int y = 0; y < br.y; y++)
         for(int x = 0; x < br.x; x++)
@@ -44,21 +52,21 @@ Map::Map(int width, int height) : br({width,height}) {
             gridHeight[x][y] = perlVal(float(x)*perlScale,float(y)*perlScale);
     }
     
-    terrainS = new olc::Sprite(br.x * graphicalDetail,br.y * graphicalDetail);
+    terrain.Create(br.x * graphicalDetail,br.y * graphicalDetail);
     float pixelSize = perlScale / graphicalDetail;
     
       // shaded map
-    for(int y = 0; y < terrainS->Size().y; y++)
-        for(int x = 0; x < terrainS->Size().x; x++){
+    for(int y = 0; y < terrain.Sprite()->Size().y; y++)
+        for(int x = 0; x < terrain.Sprite()->Size().x; x++){
             float value = (perlin.eval(float(x)*pixelSize,float(y)*pixelSize) + 1.0f) * 0.5f;
             float temp = value * 255.0f;
-            terrainS->SetPixel(x,y,olc::Pixel(int(temp),int(temp),int(temp)));
+            terrain.Sprite()->SetPixel(x,y,olc::Pixel(int(temp),int(temp),int(temp) ) );
     } //*/
     // height map
     int numLines = 10;
     
-    for(int y = 1; y < terrainS->Size().y -1; y++)
-        for(int x = 1; x < terrainS->Size().x -1; x++){
+    for(int y = 1; y < terrain.Sprite()->Size().y -1; y++)
+        for(int x = 1; x < terrain.Sprite()->Size().x -1; x++){
             float center = perlVal(x*pixelSize,y*pixelSize);
             
             float north= perlVal(x*pixelSize,(y-1)*pixelSize);
@@ -70,29 +78,28 @@ Map::Map(int width, int height) : br({width,height}) {
             for(int i = 0; i < numLines;i++){
                 float check = float(i) / float(numLines);
                 if(north < check != south < check && center > check)
-                    terrainS->SetPixel(x,y,olc::Pixel(0,check*255,0));
+                    terrain.Sprite()->SetPixel(x,y,olc::Pixel(0,check*255,0) );
                 if(west < check != east < check && center > check )
-                    terrainS->SetPixel(x,y,olc::Pixel(0,check*255,0));
+                    terrain.Sprite()->SetPixel(x,y,olc::Pixel(0,check*255,0) );
             }
     }
     
-    terrainD = new olc::Decal(terrainS);
+    terrain.Decal()->Update();
 }
 
 Map::~Map(){
-    for(auto [location,unitData] : unitLocations){
+    for(auto [location,unitData] : unitLocations) {
         unitData.units.clear();
     }
-    delete terrainD;
-    delete terrainS;
+    unitLocations.clear();
 }
 
-void Map::generateResources(int amount){
-    for(int i = 0;i < amount; /*i++ when node added*/){
+void Map::generateResources(int count){
+    for(int i = 0;i < count; /*i++ when node added*/){
         int randomx = rand() % br.x;
         int randomy = rand() % br.y;
-        if(resourceNodes.find(olc::vi2d(randomx,randomy)) == resourceNodes.end()){
-            resourceNodes[olc::vi2d(randomx,randomy)] = 10;
+        if(resourceNodes.find(olc::vi2d(randomx,randomy) ) == resourceNodes.end() ){
+            resourceNodes[olc::vi2d(randomx,randomy)] = Resource();
             i++;
         }
     }
@@ -115,22 +122,22 @@ void Map::generateVectorMap(){
         visited[loc.x][loc.y].insert(cell.faction);
     }
     
-    while(!cellList.empty())
+    while(!cellList.empty() )
     {
-        float thisWeight = std::get<0>(cellList.top());
-        int thisFaction = std::get<1>(cellList.top());
-        olc::vi2d thisLoc = std::get<2>(cellList.top());
+        float thisWeight = std::get<0>(cellList.top() );
+        int thisFaction = std::get<1>(cellList.top() );
+        olc::vi2d thisLoc = std::get<2>(cellList.top() );
             
         cellList.pop();
         for(olc::vi2d offset : compass)
         {
             olc::vi2d nextCell = thisLoc + offset;
             
-            if(!checkBounds(nextCell))
+            if(!checkBounds(nextCell) )
                 continue;// if cell out of bounds, skip
-            if(visited[nextCell.x][nextCell.y].find(thisFaction) == visited[nextCell.x][nextCell.y].end()){
+            if(visited[nextCell.x][nextCell.y].find(thisFaction) == visited[nextCell.x][nextCell.y].end() ){
                 
-                float nextWeight = thisWeight + (1 + terrainSlope(thisLoc,nextCell ));
+                float nextWeight = thisWeight + (1 + terrainSlope(thisLoc,nextCell ) );
                 vectorPathField[nextCell.x][nextCell.y][thisFaction] = nextWeight;
                 visited[nextCell.x][nextCell.y].insert(thisFaction);
                 cellList.push({nextWeight,thisFaction,nextCell});
@@ -156,59 +163,60 @@ void Map::setBaseLocation(olc::vi2d loc, int faction){
 
 /// Returns Capacity remaining at loc
 int Map::checkForRoom(olc::vi2d loc,int faction){
-    if(unitLocations.find(loc) == unitLocations.end()) 
+    if(unitLocations.find(loc) == unitLocations.end() ) 
         return cellCapacity;// location not registered, full capacity is avaliable
     
     if(faction != unitLocations[loc].faction)
         return 0; // location occupied by another faction, no room
         
-    int pop = 0;
-    for(auto& unit : unitLocations[loc].units){
-        if(unit->alive()){
-            pop += unit->getSize();
-        }
-    }
-    return cellCapacity - pop;
+    return cellCapacity - unitLocations[loc].occupation;
 }
 
 /// adds new unit to map at location
-std::list<std::shared_ptr<Entity>>::iterator Map::addUnit(olc::vi2d location, std::shared_ptr<Entity> unit){
+std::list<std::weak_ptr<in_map>>::iterator Map::addUnit(olc::vi2d location,int size, std::shared_ptr<Unit> unit){
     if(unitLocations.find(location) == unitLocations.end() ){
         unitLocations[location].faction = unit->faction();
     }
+    unitLocations[location].occupation += size;
     unitLocations[location].units.push_back(unit);
-    return std::prev(unitLocations[location].units.end());
+    return std::prev(unitLocations[location].units.end() );
 }
 
 /// moves unit iterator from one map location to another without iterator invalidation
-void Map::moveUnit(olc::vi2d origin, olc::vi2d destination, std::list<std::shared_ptr<Entity>>::iterator unitIter){
+void Map::moveUnit(olc::vi2d origin, olc::vi2d destination,int size, std::list<std::weak_ptr<in_map>>::iterator unitIter){
     if(unitLocations.find(destination) == unitLocations.end() ){
-        unitLocations[destination].faction = (*unitIter)->faction();
+        unitLocations[destination].faction = unitLocations[origin].faction;
     }
-    
+    unitLocations[origin].occupation -= size;
+    unitLocations[destination].occupation += size;
     unitLocations[destination].units.splice(unitLocations[destination].units.end(),unitLocations[origin].units,unitIter);
     
     // clean up any empty lists
-    if(unitLocations[origin].units.empty())
+    if(unitLocations[origin].units.empty() )
         unitLocations.erase(origin);
 }
 
 /// remove unit tracker and cleans up memory locations if needed
-void Map::removeUnit(olc::vi2d loc,std::list<std::shared_ptr<Entity>>::iterator unitIter){
+void Map::removeUnit(olc::vi2d loc, std::list<std::weak_ptr<in_map>>::iterator unitIter){
     if(unitLocations.find(loc) == unitLocations.end() )
         return; // location not registered, no units to remove. (should not happen, but safety check)
-        
-    unitLocations[loc].units.erase(unitIter);
+    
+    if(std::shared_ptr<in_map> unitPtr = unitIter->lock() ){
+        if(std::shared_ptr<Unit> unit = std::static_pointer_cast<Unit>(unitPtr) ){
+            unitLocations[loc].occupation -= unit->checkStat(size);
+            unitLocations[loc].units.erase(unitIter);
+        }
+    }
     
     // clean up location and faction keys if no longer needed
-    if(unitLocations[loc].units.empty())
+    if(unitLocations[loc].units.empty() )
         unitLocations.erase(loc);
 }
 
 /// checks if a cell has units listed at location that are not in the same faction 
 /// (Could this be an area check? return a unit to attack directly? considerations) 
 bool Map::checkFactionEnemy(int yourFaction,olc::vi2d location){
-    if(unitLocations.find(location) == unitLocations.end())
+    if(unitLocations.find(location) == unitLocations.end() )
         return false; //location not registered, no enemies
     if(unitLocations[location].faction != yourFaction){
         return true;
@@ -217,15 +225,19 @@ bool Map::checkFactionEnemy(int yourFaction,olc::vi2d location){
 }
 
 /// returns shared_ptr to a random unit within the given location
-std::shared_ptr<Entity> Map::getUnit(olc::vi2d location){
-    if(unitLocations.find(location) == unitLocations.end())
-        return std::shared_ptr<Entity>(); //location not registered, null return (caller should check)
+std::shared_ptr<Unit> Map::getUnit(olc::vi2d location){
+    if(unitLocations.find(location) == unitLocations.end() )
+        return std::shared_ptr<Unit>(); //location not registered, null return (caller should check)
     
-    
+    // TODO : additional logic for checking for units or buildings at this location.
     int randNum = rand() % unitLocations[location].units.size();
     auto randUnit = unitLocations[location].units.begin();
     std::advance(randUnit,randNum);
-    return *randUnit;
+    if(std::shared_ptr<in_map> ptr = randUnit->lock() )
+        if (std::shared_ptr<Unit> unit = std::static_pointer_cast<Unit>(ptr) )
+            return unit;
+            
+    return std::shared_ptr<Unit>();// again null return if lock or pointer cast fails
 }
 
 bool Map::checkBounds(olc::vi2d location){
@@ -234,4 +246,18 @@ bool Map::checkBounds(olc::vi2d location){
     if(location.y < 0 || location.y >= br.y)
         return false;
     return true;
+}
+
+in_map::in_map(){
+    
+}
+
+in_map::~in_map(){
+    clearFromMap();
+}
+
+void in_map::clearFromMap(){
+    if(_location != olc::vi2d(-1,-1) )
+        Map::mapData->removeUnit(_location,_mapIter);
+    _location = olc::vi2d(-1,-1);
 }
